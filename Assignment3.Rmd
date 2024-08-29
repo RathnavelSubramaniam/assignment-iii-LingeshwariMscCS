@@ -1,0 +1,265 @@
+---
+title: "Assignment_3"
+author: "LINGESHWARI  M"
+date: "2024-08-29"
+output: html_document
+---
+
+# 1. In this problem, you will develop a model to predict whether a given car gets high or low gas mileage based on the Auto data set.
+```{r}
+library(ISLR)
+library(MASS)
+library(class)
+data("Auto")
+```
+# (a) Create a binary variable, mpg01, that contains a 1 if mpg contains a value above its median, and a 0 if mpg contains a value below its median. You can compute the median using the median() function. Note you may find it helpful to use the data.frame() function to create a single data set containing both mpg01 and the other Auto variables.
+```{r}
+dian_mpg <- median(Auto$mpg)
+```
+
+```{r}
+Auto$mpg_1 <- ifelse(Auto$mpg > dian_mpg, 1, 0)
+```
+
+```{r}
+Auto$mpg_1
+```
+
+
+```{r}
+Auto_data <- data.frame(Auto, mpg_1 = Auto$mpg_1)
+```
+
+```{r}
+Auto_data
+```
+# (b) Explore the data graphically in order to investigate the association between mpg01 and the other features. Which of the other features seem most likely to be useful in predicting mpg01? Scatterplots and boxplots may be useful tools to answer this question. Describe your findings. 
+```{r}
+library(ggplot2)
+ggplot(Auto_data, aes(x = horsepower, y = mpg_1)) +
+  geom_point() +
+  labs(title = "Scatterplot of Horsepower vs mpg_1", x = "Horsepower", y = "mpg_1")
+ggplot(Auto_data, aes(x = weight, y = mpg_1)) +
+  geom_point() +
+  labs(title = "Scatterplot of Weight vs mpg_1", x = "Weight", y = "mpg_1")
+```
+
+```{r}
+ggplot(Auto_data, aes(x = as.factor(mpg_1), y = horsepower)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Horsepower by mpg_1", x = "mpg_1", y = "Horsepower")
+
+ggplot(Auto_data, aes(x = as.factor(mpg_1), y = weight)) +
+  geom_boxplot() +
+  labs(title = "Boxplot of Weight by mpg_1", x = "mpg_1", y = "Weight")
+```
+
+# (c)	Split the data into a training set and a test set.
+```{r}
+set.seed(123)
+```
+
+```{r}
+tr_ind <- sample(seq_len(nrow(Auto_data)), size = 0.7 * nrow(Auto_data))
+tr_data <- Auto_data[tr_ind, ]
+test_data <- Auto_data[-tr_ind, ]
+```
+
+```{r}
+tr_ind
+```
+
+```{r}
+tr_data
+```
+
+```{r}
+test_data
+```
+
+# (d)	Perform LDA on the training data in order to predict mpg01 using the variables that seemed most associated with mpg01 in (b). What is the test error of the model obtained? 
+
+```{r}
+lda_fit <- lda(mpg_1 ~ displacement + horsepower + weight + year, data=tr_data)
+
+```
+
+```{r}
+lda_fit
+```
+
+
+
+```{r}
+lda_model <- lda(mpg_1 ~ horsepower + weight, data = tr_data)
+lda_pred <- predict(lda_model, newdata = test_data)
+```
+
+```{r}
+lda_model
+```
+
+```{r}
+lda_pred
+```
+
+```{r}
+lda_class
+```
+
+```{r}
+lda_error <- mean(lda_class != test_data$mpg_1)
+lda_error
+```
+
+```{r}
+confu_mat_lda <- table(Predicted = lda_class, Actual = test_data$mpg_1)
+
+```
+
+```{r}
+print(confu_mat_lda)
+```
+
+```{r}
+(49+55)/118 #accuracy
+(3+11)/188 #test error
+```
+
+
+# (e)	Perform QDA on the training data in order to predict mpg01 using the variables that seemed most associated with mpg01 in (b). What is the test error of the model obtained? 
+```{r}
+qda_model <- qda(mpg_1 ~ horsepower + weight, data = tr_data)
+qda_pred <- predict(qda_model, newdata = test_data)
+qda_class <- qda_pred$class
+```
+
+```{r}
+qda_model
+```
+
+```{r}
+qda_pred
+```
+
+```{r}
+qda_class
+```
+
+```{r}
+confu_mat_qda <- table(Predicted = qda_class, Actual = test_data$mpg_1)
+
+```
+
+```{r}
+confu_mat_qda
+```
+
+```{r}
+(50+53)/118 #accuracy
+(10+5)/118 #test error
+```
+
+
+
+```{r}
+qda_error <- mean(qda_class != test_data$mpg_1)
+qda_error
+```
+
+# (f)	Perform logistic regression on the training data in order to predict mpg01 using the variables that seemed most associated with mpg01 in (b). What is the test error of the model obtained?
+```{r}
+log_model <- glm(mpg_1 ~ horsepower + weight, data = tr_data, family = binomial)
+log_pred <- predict(log_model, newdata = test_data, type = "response")
+log_class <- ifelse(log_pred > 0.5, 1, 0)
+```
+
+```{r}
+log_error <- mean(log_class != test_data$mpg_1)
+log_error
+```
+
+# (g)	Perform KNN on the training data, with several values of K, in order to predict mpg01. Use only the variables that seemed most associated with mpg01 in (b). What test errors do you obtain? Which value of K seems to perform the best on this data set?
+```{r}
+auto_1 <- data.frame(Auto$mpg_1, Auto[, -1]) 
+```
+
+```{r}
+set.seed(1)
+train_index <- sample(1:nrow(auto_1), 0.7 * nrow(auto_1))
+tr_auto <- train_index
+```
+
+```{r}
+tr_auto_x <- scale(auto_1[tr_auto, c("horsepower", "weight")])      
+test_auto_x <- scale(auto_1[-tr_auto, c("horsepower", "weight")])   
+```
+
+```{r}
+tr_auto_y <- auto_1$mpg_1[tr_auto]     
+test_auto_y <- auto_1$mpg_1[-tr_auto]  
+
+```
+
+```{r}
+tr_auto_y
+```
+
+```{r}
+set.seed(1)
+knn_auto_1<-knn(tr_auto_x,test_auto_x,tr_auto_y,k=1)
+table(knn_auto_1,test_auto_y)
+
+```
+
+```{r}
+(50+48)/188 #accuracy
+(11+9)/188 #test error
+```
+
+
+```{r}
+set.seed(1)
+knn_auto_1=knn(tr_auto_x,test_auto_x,tr_auto_y,k=2)
+table(knn_auto_1,test_auto_y)
+```
+
+```{r}
+(52+50)/118 #accuracy
+(7+9)/118 #test error
+```
+
+```{r}
+set.seed(1)
+knn_auto_1=knn(tr_auto_x,test_auto_x,tr_auto_y,k=3)
+table(knn_auto_1,test_auto_y)
+
+```
+
+```{r}
+(54+52)/118 #accuracy
+(7+5)/118 #test error
+```
+
+```{r}
+set.seed(1)
+knn_auto_1=knn(tr_auto_x,test_auto_x,tr_auto_y,k=4)
+table(knn_auto_1,test_auto_y)
+
+```
+
+```{r}
+(53+52)/118 #accuracy
+(5+8)/118 #test error
+```
+
+
+
+
+
+
+
+
+
+
+
